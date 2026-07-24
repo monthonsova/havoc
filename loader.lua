@@ -163,7 +163,9 @@ local renderConn1 = SVC.RunService.RenderStepped:Connect(function()
 end)
 table.insert(havoc.conns, renderConn1)
 
-havoc.setupWeaponModHooks()
+if type(havoc.setupWeaponModHooks) == "function" then
+    pcall(havoc.setupWeaponModHooks)
+end
 
 local heartConn1 = SVC.RunService.Heartbeat:Connect(function(dt)
     if type(havoc.tickWorldCaches) == "function" then
