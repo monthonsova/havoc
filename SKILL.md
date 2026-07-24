@@ -26,3 +26,35 @@ This document serves as a reminder and guide for the AI agent (Antigravity) to o
 - **Raycast Exclusion Safety**: Verify that `FilterDescendantsInstances` arrays only contain non-nil Instances with active parents (`inst.Parent ~= nil`) to prevent Roblox physics engine exceptions.
 - **Legacy Property Fallbacks**: Use `part.AssemblyLinearVelocity or part.Velocity or Vector3.zero` to guarantee compatibility across diverse execution environments and older engine releases.
 - **Defensive Type Checking**: Before executing cross-module hooks or callbacks (e.g., `applySilentFire`), always verify function existence via `type(fn) == "function"`.
+
+---
+
+## 4. Potassium Executor Capabilities & API Reference
+
+Potassium is an advanced Roblox executor environment providing comprehensive C-closure hooking, memory reflection, environment manipulation, and off-thread execution capabilities.
+
+### Key Libraries & APIs:
+* **Closure & Function Hooking**:
+  - `hookfunction(oldFn, newFn)`: Hooks a Lua or C closure and returns the original function.
+  - `restorefunction(fn)`: Restores a hooked function back to its original implementation.
+  - `oth.hook(targetFn, hookFn)`: Off-Thread Hooking mechanism allowing secure C-function hooking on isolated threads to bypass detection.
+  - `oth.get_root_callback()` / `oth.unhook()`: Tools for managing off-thread hooks.
+  - `isfunctionhooked(fn)` / `iscclosure(fn)` / `islclosure(fn)` / `isexecutorclosure(fn)`: Type and status checking for functions.
+  - `setstackhidden(fn, state)`: Hides execution frames from call-stack inspection anti-cheats.
+* **Metatable & Environment Manipulation**:
+  - `hookmetamethod(object, method, newFn)`: Direct hooking of metatable methods (e.g., `__namecall`, `__index`, `__newindex`).
+  - `getnamecallmethod()` / `setnamecallmethod(method)`: Access and override active `__namecall` method names.
+  - `getsenv(script)` / `getgenv()` / `getrenv()`: Script, executor, and Roblox engine environment inspection.
+  - `setreadonly(table, bool)` / `isreadonly(table)`: Toggle metatable write protections.
+* **Reflection & Memory Inspection**:
+  - `getgc(includeTables)` / `filtergc(...)`: Garbage collection scanning to locate hidden instances, functions, and active tables.
+  - `getloadedmodules()` / `getrunningscripts()`: Retrieve module and script arrays.
+  - `gethiddenproperty(inst, prop)` / `sethiddenproperty(inst, prop, val)`: Access non-scriptable internal properties.
+  - `getbspval(inst)`: Read binary string properties (e.g., Terrain physics, Mesh data).
+* **Signal & RakNet Networking**:
+  - `raknet.add_send_hook(callback)`: Hook low-level RakNet network packets before transmission.
+  - `raknet.send(payload, ...)`: Direct low-level packet dispatching.
+  - `getconnections(signal)` / `firesignal(signal)` / `replicatesignal(signal)`: Inspect and invoke RBXScriptSignal connections.
+* **Input & Render**:
+  - `mousemoverel(dx, dy)` / `mousemoveabs(x, y)` / `mouse1click()` / `keypress(code)`: User input injection.
+  - `Drawing.new(type)` / `DrawingImmediate`: Vector overlay rendering.
