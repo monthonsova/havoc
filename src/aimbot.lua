@@ -170,7 +170,7 @@ return function(havoc)
 
     havoc.predictPos = function(part, fromPos, usePrediction)
         if not usePrediction or not part then return part and part.Position end
-        local vel = part.AssemblyLinearVelocity
+        local vel = part.AssemblyLinearVelocity or part.Velocity or Vector3.zero
         local dist = (part.Position - fromPos).Magnitude
         local t = dist / 1000
         return part.Position + vel * t

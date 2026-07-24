@@ -3,24 +3,18 @@ return function(havoc)
     local SaveConfig = havoc.SaveConfig
     local LP = havoc.LP
     local SVC = havoc.SVC
-    local BRAND = havoc.BRAND
-    local BRAND_ICON = havoc.BRAND_ICON
-    local BRAND_DISCORD = havoc.BRAND_DISCORD
-    local TIME_MODES = havoc.TIME_MODES
-    local configLoaded = havoc.configLoaded
+    local BRAND = havoc.BRAND or "voidw0rld"
+    local BRAND_ICON = havoc.BRAND_ICON or "rbxassetid://111627748770819"
+    local BRAND_DISCORD = havoc.BRAND_DISCORD or "discord.gg/voidw0rld"
+    local TIME_MODES = havoc.TIME_MODES or { "Auto", "Force Day", "Force Night", "Custom Time" }
     local applyTimeOfDay = havoc.applyTimeOfDay
     local applyWeaponMods = havoc.applyWeaponMods
     local installSkillHooks = havoc.installSkillHooks
     local installNetHooks = havoc.installNetHooks
     local fireGearToggle = havoc.fireGearToggle
 
-    local CASCADE_VERSION = "v1.4.0"
-    local CASCADE_FILE = "dist.luau"
-    local CASCADE_URL = ("https://github.com/cascadeui/Cascade/releases/download/%s/%s"):format(
-        CASCADE_VERSION,
-        CASCADE_FILE
-    )
-    local CASCADE_CACHE = ".cache/cascade-" .. CASCADE_VERSION .. "-" .. CASCADE_FILE
+    local VOIDUI_URL = "https://raw.githubusercontent.com/monthonsova/VoidUI-main/main/VoidUI.lua"
+    local VOIDUI_CACHE = ".cache/VoidUI-main.lua"
 
     local function httpGet(url)
         if type(game.HttpGetAsync) == "function" then
@@ -29,24 +23,31 @@ return function(havoc)
         return game:HttpGet(url)
     end
 
-    local function loadCascade()
+    local function loadVoidUI()
         local compile = loadstring or load
         if not compile then
             return nil, "no loadstring"
         end
 
         local src
-        if isfile and readfile and isfile(CASCADE_CACHE) then
-            local ok, body = pcall(readfile, CASCADE_CACHE)
-            if ok and type(body) == "string" and #body > 1000 and body:sub(1, 1) ~= "<" then
-                src = body
-                print("[HAVOC] Cascade cache hit:", CASCADE_CACHE)
+        -- Local dev cache check
+        if isfile and readfile then
+            if isfile(VOIDUI_CACHE) then
+                local ok, body = pcall(readfile, VOIDUI_CACHE)
+                if ok and type(body) == "string" and #body > 500 then
+                    src = body
+                end
+            elseif isfile("VoidUI.lua") then
+                local ok, body = pcall(readfile, "VoidUI.lua")
+                if ok and type(body) == "string" and #body > 500 then
+                    src = body
+                end
             end
         end
 
         if not src then
-            local ok, body = pcall(httpGet, CASCADE_URL)
-            if not ok or type(body) ~= "string" or #body < 1000 or body:sub(1, 1) == "<" then
+            local ok, body = pcall(httpGet, VOIDUI_URL)
+            if not ok or type(body) ~= "string" or #body < 500 or body:sub(1, 1) == "<" then
                 return nil, "HttpGet failed: " .. tostring(body)
             end
             src = body
@@ -55,13 +56,12 @@ return function(havoc)
                     if isfolder and not isfolder(".cache") then
                         makefolder(".cache")
                     end
-                    writefile(CASCADE_CACHE, src)
+                    writefile(VOIDUI_CACHE, src)
                 end)
             end
-            print("[HAVOC] Cascade downloaded:", CASCADE_VERSION)
         end
 
-        local chunk, err = compile(src, "@Cascade-" .. CASCADE_VERSION)
+        local chunk, err = compile(src, "@VoidUI")
         if not chunk then
             return nil, "compile: " .. tostring(err)
         end
@@ -70,473 +70,308 @@ return function(havoc)
         if not ok then
             return nil, "exec: " .. tostring(lib)
         end
-        if type(lib) ~= "table" or type(lib.New) ~= "function" then
-            return nil, "invalid cascade export"
+        if type(lib) ~= "table" or type(lib.CreateWindow) ~= "function" then
+            return nil, "invalid VoidUI export"
         end
         return lib
     end
 
-    if getgenv then
-        getgenv().gethui = getgenv().gethui or function()
-            local pg = LP:FindFirstChildOfClass("PlayerGui")
-            if pg then return pg end
-            return LP:WaitForChild("PlayerGui", 10)
-        end
-        if type(cloneref) ~= "function" then
-            getgenv().cloneref = function(obj) return obj end
-        end
-    end
-
-    local cascade, loadErr = loadCascade()
-    if not cascade then
-        warn("[HAVOC] Cascade unavailable:", loadErr, "| core still active | Num1-4 | RMB")
+    local VoidUI, loadErr = loadVoidUI()
+    if not VoidUI then
+        warn("[HAVOC] VoidUI unavailable:", loadErr, "| core still active | Num1-4 | RMB")
         return
     end
 
-    local theme = cascade.Themes and (cascade.Themes.Dark or cascade.Themes.Light)
-    local accent = cascade.Accents and (cascade.Accents.Blue or cascade.Accents.Purple)
-    if not theme then
-        warn("[HAVOC] Cascade Themes missing")
-        return
-    end
+    local Window = VoidUI:CreateWindow({
+        Title = BRAND,
+        Author = "HAVOC Internal · " .. BRAND_DISCORD,
+        Icon = BRAND_ICON,
+        Accent = Color3.fromRGB(162, 89, 255),
+        Size = UDim2.fromOffset(720, 560),
+        Transparency = 0.14,
+        Bloom = true,
+        Search = true,
+        OpenButton = true,
+        ToggleKey = Enum.KeyCode.G,
+        CornerRadius = 26,
+    })
 
-    local function sym(name)
-        local s = cascade.Symbols
-        if type(s) == "table" and type(s[name]) == "string" then
-            return s[name]
-        end
-        return nil
-    end
-
-    local okApp, app = pcall(function()
-        return cascade.New({
-            Theme = theme,
-            Accent = accent,
-        })
-    end)
-    if not okApp or not app then
-        warn("[HAVOC] Cascade.New failed:", app)
-        return
-    end
-
-    local okWin, window = pcall(function()
-        return app:Window({
-            Title = BRAND or "voidw0rld",
-            Subtitle = "HAVOC Internal · " .. (BRAND_DISCORD or ""),
-            Searching = true,
-            Draggable = true,
-            Resizable = true,
-            CanExit = false,
-            CanMinimize = true,
-            CanZoom = true,
-            Dropshadow = true,
-            UIBlur = false,
-            Minimized = false,
-        })
-    end)
-    if not okWin or not window then
-        warn("[HAVOC] Cascade Window failed:", window)
-        return
-    end
-
-    local screenGui = nil
-    pcall(function()
-        if typeof(app.__container) == "Instance" then
-            screenGui = app.__container
-        elseif app.__instance and typeof(app.__instance) == "Instance" then
-            screenGui = app.__instance
-        end
-    end)
-    if not screenGui then
-        pcall(function()
-            local gethui = rawget(getfenv(), "gethui") or (getgenv and getgenv().gethui)
-            local root = gethui and gethui()
-            if root then
-                screenGui = root:FindFirstChild("Cascade")
-            end
-            if not screenGui and LP then
-                local pg = LP:FindFirstChildOfClass("PlayerGui")
-                screenGui = pg and pg:FindFirstChild("Cascade")
-            end
-        end)
-    end
-
-    -- Assign windows back to havoc context
-    havoc.CascadeApp = app
-    havoc.CascadeWindow = window
-    havoc.CascadeGui = screenGui
-
-    local function pushNotify(title, subtitle, duration)
-        pcall(function()
-            app:Notification({
-                App = "HAVOC",
-                AppIcon = BRAND_ICON,
-                Title = title or "HAVOC",
-                Subtitle = subtitle or "",
-                Duration = duration or 4,
-            })
-        end)
-    end
-    havoc.cascadeNotifyFn = pushNotify
+    havoc.CascadeWindow = Window
+    havoc.VoidUIWindow = Window
 
     local toggleRefs = {}
-    local suppressUiSync = false
+    local sliderRefs = {}
+    local dropdownRefs = {}
 
-    local function addToggle(form, title, subtitle, key, cb)
-        local row = form:Row({ SearchIndex = title })
-        row:Left():TitleStack({
+    local function addToggle(section, title, desc, cfgKey, onChange)
+        local api = section:Toggle({
             Title = title,
-            Subtitle = subtitle,
-        })
-        local toggle = row:Right():Toggle({
-            Value = CFG[key] == true,
-            ValueChanged = function(_, value)
-                if suppressUiSync then return end
-                CFG[key] = value and true or false
-                if cb then
-                    pcall(cb, CFG[key])
-                end
-                pcall(SaveConfig)
+            Desc = desc,
+            Value = CFG[cfgKey] == true,
+            Callback = function(v)
+                CFG[cfgKey] = v
+                SaveConfig()
+                if onChange then pcall(onChange, v) end
             end,
         })
-        toggleRefs[key] = toggle
+        toggleRefs[cfgKey] = api
+        return api
     end
 
-    local function addSlider(form, title, subtitle, key, min, max, cb)
-        local cur = tonumber(CFG[key]) or min
-        cur = math.clamp(math.floor(cur + 0.5), min, max)
-        CFG[key] = cur
-
-        local function labelFor(v)
-            return string.format("%s (%d)", title, v)
-        end
-
-        local row = form:Row({ SearchIndex = title })
-        local titleStack = row:Left():TitleStack({
-            Title = labelFor(cur),
-            Subtitle = subtitle,
-        })
-        local slider = row:Right():Slider({
-            Minimum = min,
-            Maximum = max,
-            Value = cur,
-            ValueChanged = function(_, value)
-                if suppressUiSync then return end
-                local n = math.clamp(math.floor((tonumber(value) or cur) + 0.5), min, max)
-                CFG[key] = n
-                pcall(function()
-                    titleStack.Title = labelFor(n)
-                end)
-                if cb then
-                    pcall(cb, n)
-                end
-                pcall(SaveConfig)
-            end,
-        })
-        return slider
-    end
-
-    local function addDropdown(form, title, subtitle, keyValues, selectedIndex, onPick)
-        local row = form:Row({ SearchIndex = title })
-        row:Left():TitleStack({
+    local function addSlider(section, title, desc, min, max, cfgKey, suffix, onChange)
+        local api = section:Slider({
             Title = title,
-            Subtitle = subtitle,
-        })
-        local idx = math.clamp(tonumber(selectedIndex) or 1, 1, #keyValues)
-        row:Right():PullDownButton({
-            Label = keyValues[idx],
-            Options = keyValues,
-            Value = idx,
-            ValueChanged = function(self, value)
-                if suppressUiSync then return end
-                local i = tonumber(value) or 1
-                i = math.clamp(i, 1, #keyValues)
-                if onPick then
-                    pcall(onPick, i, keyValues[i])
-                end
-                pcall(function()
-                    self.Label = keyValues[i]
-                end)
-                pcall(SaveConfig)
+            Desc = desc,
+            Min = min,
+            Max = max,
+            Value = CFG[cfgKey] or min,
+            Suffix = suffix or "",
+            Callback = function(v)
+                CFG[cfgKey] = v
+                SaveConfig()
+                if onChange then pcall(onChange, v) end
             end,
         })
+        sliderRefs[cfgKey] = api
+        return api
     end
 
-    local function addButton(form, title, subtitle, onPush)
-        local row = form:Row({ SearchIndex = title })
-        row:Left():TitleStack({
+    local function addDropdown(section, title, desc, values, cfgKey, onChange)
+        local api = section:Dropdown({
             Title = title,
-            Subtitle = subtitle,
-        })
-        row:Right():Button({
-            Label = "Run",
-            State = "Secondary",
-            Pushed = function()
-                pcall(onPush)
+            Desc = desc,
+            Values = values,
+            Value = CFG[cfgKey] or values[1],
+            Callback = function(v)
+                CFG[cfgKey] = v
+                SaveConfig()
+                if onChange then pcall(onChange, v) end
             end,
         })
+        dropdownRefs[cfgKey] = api
+        return api
     end
 
-    havoc.cascadeUiSync = function()
-        suppressUiSync = true
-        for key, toggle in pairs(toggleRefs) do
-            local want = CFG[key] == true
+    -- ── 1. COMBAT TAB ─────────────────────────────────────────────────────
+    local CombatTab = Window:Tab({ Title = "Combat", Icon = "target", Selected = true })
+    local CombatPage = CombatTab:Page({ Title = "Combat Options", Columns = 2 })
+
+    local secNpc = CombatPage:Section({ Title = "NPC Aimbot", Column = 1 })
+    addToggle(secNpc, "Aimbot Entity", "Num2 · hold RMB to lock", "npcAimEnabled")
+    addToggle(secNpc, "NPC Prediction", "Lead moving targets", "npcAimPrediction")
+    addToggle(secNpc, "NPC FOV Circle", "Draw FOV ring", "npcAimDrawFov")
+    addToggle(secNpc, "NPC Target Line", "Line to target", "npcAimTargetLine")
+    addSlider(secNpc, "NPC FOV", "Target search radius", 10, 500, "npcAimFov", "px")
+    addSlider(secNpc, "NPC Smooth", "Aim speed divider", 1, 25, "npcAimSmooth")
+    addSlider(secNpc, "NPC Max Range", "Studs", 100, 3000, "npcAimMaxDist", "m")
+
+    local secPlr = CombatPage:Section({ Title = "Player Aimbot", Column = 2 })
+    addToggle(secPlr, "Aimbot Player", "Num1 · hold RMB to lock", "playerAimEnabled")
+    addToggle(secPlr, "Player FOV Circle", "Draw FOV ring", "playerAimDrawFov")
+    addToggle(secPlr, "Player Target Line", "Line to target", "playerAimTargetLine")
+    addSlider(secPlr, "Player FOV", "Target search radius", 10, 500, "playerAimFov", "px")
+    addSlider(secPlr, "Player Smooth", "Aim speed divider", 1, 25, "playerAimSmooth")
+    addToggle(secPlr, "Player Prediction", "Lead moving targets", "playerAimPrediction")
+
+    local secSilent = CombatPage:Section({ Title = "Silent Aim (PvP)", Column = 1 })
+    addToggle(secSilent, "Silent Aim", "Bullet goes to enemy in FOV", "silentAim", function() pcall(installNetHooks) end)
+    addToggle(secSilent, "Hipfire Accurate", "No ADS needed", "hipfireAccurate")
+    addToggle(secSilent, "Wallbang", "Silent ignores walls", "silentAimWallbang")
+    addToggle(secSilent, "Silent Needs RMB", "Only while holding RMB", "silentAimRequireRmb")
+    addToggle(secSilent, "Silent Prediction", "Lead moving targets", "silentAimPrediction")
+    addSlider(secSilent, "Silent FOV", "Hitbox search radius", 20, 800, "silentAimFov", "px")
+    addSlider(secSilent, "Silent Max Range", "Studs", 50, 4000, "silentAimMaxDist", "m")
+
+    local secShared = CombatPage:Section({ Title = "Shared Combat", Column = 2 })
+    addToggle(secShared, "Visible Only", "LOS check for aimbot", "aimVisibleCheck")
+    addToggle(secShared, "Feature Status HUD", "Bottom-left status list", "featureHud")
+
+    -- ── 2. ESP TAB ────────────────────────────────────────────────────────
+    local EspTab = Window:Tab({ Title = "ESP", Icon = "eye" })
+    local EspPage = EspTab:Page({ Title = "Visual Overlays", Columns = 2 })
+
+    local secEspEntity = EspPage:Section({ Title = "NPC / Entity ESP", Column = 1 })
+    addToggle(secEspEntity, "Entity ESP", "NPC visuals", "entityEnabled")
+    addToggle(secEspEntity, "Entity Box", "2D Corner Box", "entityBox")
+    addToggle(secEspEntity, "Entity Name", "Display Name", "entityName")
+    addToggle(secEspEntity, "Entity Distance", "Meters", "entityDistance")
+    addToggle(secEspEntity, "Held Item", "Weapon name", "entityHeldItem")
+    addToggle(secEspEntity, "Health Bar", "Side bar", "entityHealthBar")
+    addToggle(secEspEntity, "Skeleton", "3D Bones", "entitySkeleton")
+    addSlider(secEspEntity, "Entity Range", "Studs", 100, 3000, "entityMaxDist", "m")
+
+    local secEspPlr = EspPage:Section({ Title = "Player ESP", Column = 2 })
+    addToggle(secEspPlr, "Player ESP", "Player visuals", "playerEnabled")
+    addToggle(secEspPlr, "Player Box", "2D Corner Box", "playerBox")
+    addToggle(secEspPlr, "Player Name", "Player Name", "playerName")
+    addToggle(secEspPlr, "Player Distance", "Meters", "playerDistance")
+    addToggle(secEspPlr, "Held Weapon", "Weapon name", "playerHeldItem")
+    addToggle(secEspPlr, "Inventory Peek", "Estimated gear value", "playerInvPeek")
+    addSlider(secEspPlr, "Min Inv Value", "Filter $", 0, 100000, "playerInvMinValue", "$")
+    addToggle(secEspPlr, "Health Bar", "Side bar", "playerHealthBar")
+    addToggle(secEspPlr, "Skeleton", "3D Bones", "playerSkeleton")
+    addSlider(secEspPlr, "Player Range", "Studs", 100, 3000, "playerMaxDist", "m")
+
+    local secEspLoot = EspPage:Section({ Title = "Loot Containers", Column = 1 })
+    addToggle(secEspLoot, "Loot ESP", "Num3 toggle", "lootEnabled")
+    addToggle(secEspLoot, "Loot Distance", "Meters", "lootDistance")
+    addToggle(secEspLoot, "Color Marker", "Dot marker", "lootMarker")
+    addSlider(secEspLoot, "Loot Range", "Studs", 100, 5000, "lootMaxDist", "m")
+    addSlider(secEspLoot, "Text Size", "Font size", 10, 20, "lootTextSize", "px")
+
+    local secEspVis = EspPage:Section({ Title = "Visibility & Tracers", Column = 2 })
+    addToggle(secEspVis, "Visibility Check", "Raycast LOS", "espVisibleCheck")
+    addToggle(secEspVis, "Tint Hidden", "Occluded drawn gray", "espHiddenTint")
+    addToggle(secEspVis, "Hide Occluded", "Skip behind walls", "espHideOccluded")
+    addToggle(secEspVis, "Entity Tracers", "Snap lines", "entityTracer")
+    addToggle(secEspVis, "Player Tracers", "Snap lines", "playerTracer")
+
+    local secRadar = EspPage:Section({ Title = "Threat Radar", Column = 1 })
+    addToggle(secRadar, "Circular Radar", "Ring + blips", "radarEnabled")
+    addToggle(secRadar, "Behind Warning", "Warn if enemy behind", "threatBehind")
+    addToggle(secRadar, "Targeted Warning", "Warn if aiming at you", "threatAiming")
+    addToggle(secRadar, "Threat Beep", "Audio alert", "threatSound")
+    addSlider(secRadar, "Radar Size", "Radius", 50, 140, "radarRadius", "px")
+    addSlider(secRadar, "Radar Range", "Studs", 100, 2000, "radarMaxDist", "m")
+    addSlider(secRadar, "Targeted Range", "Studs", 50, 800, "threatMaxDist", "m")
+
+    local secExfil = EspPage:Section({ Title = "Exfil & Ground Drops", Column = 2 })
+    addToggle(secExfil, "Exfil ESP", "Num4 toggle", "exfilEnabled")
+    addToggle(secExfil, "Exfil Timer", "Countdown", "exfilTimer")
+    addToggle(secExfil, "Line To Nearest", "Snap line", "exfilNearestLine")
+    addToggle(secExfil, "Dropped Items", "Items on ground", "dropsEnabled")
+    addToggle(secExfil, "Drop Value", "Trader sell $", "dropsShowValue")
+    addToggle(secExfil, "Drop Buy Price", "Show vendor buyPrice", "dropsShowBuyPrice")
+    addToggle(secExfil, "Drop Tag", "Category label", "dropsShowTag")
+    addToggle(secExfil, "Drop Tier", "Tier & level", "dropsShowTier")
+    addToggle(secExfil, "Color By Tier", "Rarity color", "dropsColorByTier")
+    addToggle(secExfil, "Drop Marker", "Dot marker", "dropsMarker")
+    addSlider(secExfil, "Drop Range", "Studs", 50, 3000, "dropsMaxDist", "m")
+    addSlider(secExfil, "Min Drop Value", "Filter $", 0, 50000, "dropsMinValue", "$")
+    addSlider(secExfil, "Min Tier", "Filter tier", 0, 5, "dropsMinTier")
+
+    local secDropFilter = EspPage:Section({ Title = "Drop Categories", Column = 1 })
+    addToggle(secDropFilter, "Show Quest", "Quest items", "dropsFilterQuest")
+    addToggle(secDropFilter, "Show Ammo", "Ammunition", "dropsFilterAmmo")
+    addToggle(secDropFilter, "Show Meds", "Medical supplies", "dropsFilterMed")
+    addToggle(secDropFilter, "Show Armor", "Vests & helmets", "dropsFilterArmor")
+    addToggle(secDropFilter, "Show Other", "Misc loot", "dropsFilterOther")
+
+    local secQuest = EspPage:Section({ Title = "Quest Objectives", Column = 2 })
+    addToggle(secQuest, "Quest Markers", "Map objectives", "questMarkerEnabled")
+    addSlider(secQuest, "Quest Range", "Studs", 100, 8000, "questMaxDist", "m")
+
+    -- ── 3. MODS TAB ───────────────────────────────────────────────────────
+    local ModsTab = Window:Tab({ Title = "Mods", Icon = "zap" })
+    local ModsPage = ModsTab:Page({ Title = "Weapon & Environment Mods", Columns = 2 })
+
+    local secWeap = ModsPage:Section({ Title = "Weapon Modifiers", Column = 1 })
+    addToggle(secWeap, "No Recoil", "Zero kick", "noRecoil", function() pcall(applyWeaponMods) end)
+    addToggle(secWeap, "No Spread (soft)", "Tighten cone", "noSpread", function() pcall(applyWeaponMods) end)
+    addToggle(secWeap, "True No Spread", "Zero spread", "trueNoSpread", function() pcall(applyWeaponMods) end)
+    addToggle(secWeap, "Fast Bullet / Hitscan", "Boost velocity", "fastVel", function() pcall(applyWeaponMods) end)
+    addToggle(secWeap, "Instant ADS", "Instant zoom", "instantAds", function() pcall(applyWeaponMods) end)
+    addToggle(secWeap, "Fix Sway Weights", "Zero sway", "noSway", function() pcall(applyWeaponMods) end)
+
+    local secLight = ModsPage:Section({ Title = "Environment Lighting", Column = 2 })
+    addDropdown(secLight, "Time Mode", "Day / Night override", TIME_MODES, "timeMode", function() pcall(applyTimeOfDay) end)
+    addSlider(secLight, "Custom Clock", "Hour of day", 0, 24, "customClockTime", "h", function() pcall(applyTimeOfDay) end)
+    addSlider(secLight, "Brightness Boost", "Night vision boost", 0, 100, "brightnessBoost", "%", function() pcall(applyTimeOfDay) end)
+
+    -- ── 4. PLAYER TAB ─────────────────────────────────────────────────────
+    local PlrTab = Window:Tab({ Title = "Player", Icon = "user" })
+    local PlrPage = PlrTab:Page({ Title = "Movement & Survival", Columns = 2 })
+
+    local secMove = PlrPage:Section({ Title = "Movement", Column = 1 })
+    addToggle(secMove, "Overweight Sprint", "Sprint while heavy", "owSprint", function() pcall(installSkillHooks) end)
+    addToggle(secMove, "No Weight Slowdown", "Normal speed", "noWeightSpeed", function() pcall(installSkillHooks) end)
+    addToggle(secMove, "Infinite Stamina", "No drain", "infStamina", function() pcall(installSkillHooks) end)
+
+    local secSurv = PlrPage:Section({ Title = "Survival", Column = 2 })
+    addToggle(secSurv, "No Fall Damage", "Bypass fall damage", "noFall")
+    addToggle(secSurv, "No Drown", "Bypass drowning", "noDrown")
+    addToggle(secSurv, "Auto Self-Revive", "Use inhaler on downed", "autoSelfRevive")
+
+    local secCombatAct = PlrPage:Section({ Title = "Combat Actions", Column = 1 })
+    addToggle(secCombatAct, "Instant Finisher", "Finish downed in 12m", "autoFinisher")
+
+    local secInteract = PlrPage:Section({ Title = "Interactions", Column = 2 })
+    addToggle(secInteract, "Auto Lockpick", "Bypass lockpick minigame", "autoLockpick", function() pcall(installNetHooks) end)
+
+    local secGear = PlrPage:Section({ Title = "Gear Toggles", Column = 1 })
+    secGear:Button({
+        Title = "Toggle Headlamp",
+        Desc = "Requires equipped lamp",
+        Icon = "lucide:sun",
+        Callback = function() pcall(fireGearToggle, "lampToggle") end,
+    })
+    secGear:Button({
+        Title = "Toggle Visor",
+        Desc = "Requires equipped helmet",
+        Icon = "lucide:shield",
+        Callback = function() pcall(fireGearToggle, "visorToggle") end,
+    })
+
+    -- ── 5. HUD TAB ────────────────────────────────────────────────────────
+    local HudTab = Window:Tab({ Title = "HUD", Icon = "list" })
+    local HudPage = HudTab:Page({ Title = "Overlay HUDs", Columns = 1 })
+
+    local secHud = HudPage:Section({ Title = "HUD Elements", Column = 1 })
+    addToggle(secHud, "Raid HUD", "Overlay stats", "hudEnabled")
+    addToggle(secHud, "Raid Timer", "Remaining time", "hudRaidTimer")
+    addToggle(secHud, "Combat Timer", "In-combat state", "hudCombat")
+    addToggle(secHud, "Loot Secured", "Secured value", "hudLootSecured")
+    addToggle(secHud, "Open Exfil Count", "Available zones", "hudExfilCount")
+    addToggle(secHud, "Ammo / Mag HUD", "Weapon magazine", "hudAmmo")
+    addToggle(secHud, "Crosshair", "Center crosshair", "crosshair")
+
+    -- ── 6. MENU TAB ───────────────────────────────────────────────────────
+    local MenuTab = Window:Tab({ Title = "Menu", Icon = "settings" })
+    local MenuPage = MenuTab:Page({ Title = "Window Settings", Columns = 1 })
+
+    local secMenu = MenuPage:Section({ Title = "Keybinds & Controls", Column = 1 })
+    secMenu:Keybind({
+        Title = "Toggle Menu Key",
+        Desc = "Show / hide menu window",
+        Value = Enum.KeyCode.G,
+        Callback = function(key)
+            if key and Window.SetToggleKey then
+                pcall(function() Window:SetToggleKey(key) end)
+            end
+        end,
+    })
+    secMenu:Button({
+        Title = "Save Config",
+        Desc = "Force write to disk",
+        Icon = "lucide:save",
+        Callback = function()
+            pcall(SaveConfig)
             pcall(function()
-                if toggle.Value ~= want then
-                    toggle.Value = want
+                if VoidUI and VoidUI.Notify then
+                    VoidUI:Notify({ Title = "HAVOC", Content = "Configuration saved successfully!", Duration = 2 })
                 end
             end)
+        end,
+    })
+
+    -- ── Synchronizer Helper ───────────────────────────────────────────────
+    havoc.cascadeUiSync = function()
+        for key, ref in pairs(toggleRefs) do
+            if ref and type(ref.Set) == "function" then
+                pcall(ref.Set, ref, CFG[key] == true, true)
+            end
         end
-        suppressUiSync = false
+        for key, ref in pairs(sliderRefs) do
+            if ref and type(ref.Set) == "function" then
+                pcall(ref.Set, ref, CFG[key] or 0, true)
+            end
+        end
+        for key, ref in pairs(dropdownRefs) do
+            if ref and type(ref.Set) == "function" then
+                pcall(ref.Set, ref, CFG[key], true)
+            end
+        end
     end
 
-    local section = window:Section({ Title = "HAVOC", Disclosure = false })
-
-    -- Tab: Combat
-    do
-        local tab = section:Tab({
-            Selected = true,
-            Title = "Combat",
-            Icon = sym("scope") or sym("viewfinder"),
-        })
-
-        local npc = tab:PageSection({ Title = "NPC Aimbot" }):Form()
-        addToggle(npc, "Aimbot Entity", "Num2 · hold RMB to lock", "npcAimEnabled")
-        addToggle(npc, "NPC Prediction", "Lead moving targets", "npcAimPrediction")
-        addToggle(npc, "NPC FOV Circle", nil, "npcAimDrawFov")
-        addToggle(npc, "NPC Target Line", nil, "npcAimTargetLine")
-        addSlider(npc, "NPC FOV", nil, "npcAimFov", 10, 500)
-        addSlider(npc, "NPC Smooth", nil, "npcAimSmooth", 1, 25)
-        addSlider(npc, "NPC Range", nil, "npcAimMaxDist", 100, 3000)
-
-        local plr = tab:PageSection({ Title = "Player Aimbot" }):Form()
-        addToggle(plr, "Aimbot Player", "Num1 · hold RMB to lock", "playerAimEnabled")
-        addToggle(plr, "Player FOV Circle", nil, "playerAimDrawFov")
-        addToggle(plr, "Player Target Line", nil, "playerAimTargetLine")
-        addSlider(plr, "Player FOV", nil, "playerAimFov", 10, 500)
-        addSlider(plr, "Player Smooth", nil, "playerAimSmooth", 1, 25)
-        addToggle(plr, "Prediction", nil, "playerAimPrediction")
-
-        local silent = tab:PageSection({ Title = "Silent Aim (PvP)" }):Form()
-        addToggle(silent, "Silent Aim", "Bullet goes to enemy in FOV — camera free. No conflict with aimbot.", "silentAim", function(v)
-            if v then task.spawn(installNetHooks) end
-        end)
-        addToggle(silent, "Hipfire Accurate", "No ADS needed — bullets follow look / silent", "hipfireAccurate")
-        addToggle(silent, "Wallbang", "Silent ignores walls (LOS off)", "silentAimWallbang")
-        addToggle(silent, "Silent Needs RMB", "Only while holding RMB", "silentAimRequireRmb")
-        addToggle(silent, "Silent Prediction", "Lead moving targets", "silentAimPrediction")
-        addSlider(silent, "Silent FOV", "Enemy must be in this screen FOV", "silentAimFov", 20, 800)
-        addSlider(silent, "Silent Range", nil, "silentAimMaxDist", 50, 4000)
-
-        local sharedForm = tab:PageSection({ Title = "Shared" }):Form()
-        addToggle(sharedForm, "Visible Only", "LOS for aimbot + silent (unless Wallbang)", "aimVisibleCheck")
-        addToggle(sharedForm, "Feature Status HUD", "Bottom-left ON/OFF list", "featureHud")
-    end
-
-    -- Tab: ESP
-    do
-        local tab = section:Tab({
-            Title = "ESP",
-            Icon = sym("eye") or sym("binoculars"),
-        })
-
-        local ent = tab:PageSection({ Title = "NPC / Entity" }):Form()
-        addToggle(ent, "Entity ESP", "NPC visuals", "entityEnabled")
-        addToggle(ent, "Entity Box", nil, "entityBox")
-        addToggle(ent, "Entity Name", nil, "entityName")
-        addToggle(ent, "Entity Distance", nil, "entityDistance")
-        addToggle(ent, "Held Item", nil, "entityHeldItem")
-        addToggle(ent, "Health Bar", nil, "entityHealthBar")
-        addToggle(ent, "Skeleton", nil, "entitySkeleton")
-        addSlider(ent, "Entity Range", "Max render distance", "entityMaxDist", 100, 3000)
-
-        local players = tab:PageSection({ Title = "Players" }):Form()
-        addToggle(players, "Player ESP", nil, "playerEnabled")
-        addToggle(players, "Player Box", nil, "playerBox")
-        addToggle(players, "Player Name", nil, "playerName")
-        addToggle(players, "Player Distance", nil, "playerDistance")
-        addToggle(players, "Held Weapon", nil, "playerHeldItem")
-        addToggle(players, "Inventory Peek", "Held + visible gear value", "playerInvPeek")
-        addSlider(players, "Min Inv Value", "Hide INV below this", "playerInvMinValue", 0, 100000)
-        addToggle(players, "Health Bar", nil, "playerHealthBar")
-        addToggle(players, "Skeleton", nil, "playerSkeleton")
-        addSlider(players, "Player Range", nil, "playerMaxDist", 100, 3000)
-
-        local loot = tab:PageSection({ Title = "Loot" }):Form()
-        addToggle(loot, "Loot ESP", "Num3 toggle", "lootEnabled")
-        addToggle(loot, "Loot Distance", nil, "lootDistance")
-        addToggle(loot, "Color Marker", nil, "lootMarker")
-        addSlider(loot, "Loot Range", nil, "lootMaxDist", 100, 5000)
-        addSlider(loot, "Loot Text Size", nil, "lootTextSize", 10, 20)
-
-        local vis = tab:PageSection({ Title = "Visibility" }):Form()
-        addToggle(vis, "Visibility Check", "Raycast LOS", "espVisibleCheck")
-        addToggle(vis, "Tint Hidden", "Occluded drawn gray", "espHiddenTint")
-        addToggle(vis, "Hide Occluded", "Skip behind walls", "espHideOccluded")
-        addToggle(vis, "Entity Tracers", nil, "entityTracer")
-        addToggle(vis, "Player Tracers", nil, "playerTracer")
-
-        local radar = tab:PageSection({ Title = "Radar / Threat" }):Form()
-        addToggle(radar, "Circular Radar", "Ring + player/NPC blips (mid-right)", "radarEnabled")
-        addToggle(radar, "Behind Warning", nil, "threatBehind")
-        addToggle(radar, "Targeted Warning", nil, "threatAiming")
-        addToggle(radar, "Threat Beep", nil, "threatSound")
-        addSlider(radar, "Radar Size", "Disc radius on screen", "radarRadius", 50, 140)
-        addSlider(radar, "Radar Range", "World distance scale", "radarMaxDist", 100, 2000)
-        addSlider(radar, "Targeted Range", nil, "threatMaxDist", 50, 800)
-
-        local exfil = tab:PageSection({ Title = "Extraction & Drops" }):Form()
-        addToggle(exfil, "Exfil ESP", "Num4 · available zones only", "exfilEnabled")
-        addToggle(exfil, "Exfil Timer", nil, "exfilTimer")
-        addToggle(exfil, "Line To Nearest", nil, "exfilNearestLine")
-        addToggle(exfil, "Dropped Items", nil, "dropsEnabled")
-        addToggle(exfil, "Drop Value", "Trader sell $ (itemData.price)", "dropsShowValue")
-        addToggle(exfil, "Drop Buy Price", "Show vendor buyPrice", "dropsShowBuyPrice")
-        addToggle(exfil, "Drop Tag", "QUEST / AMMO / MED / ARMOR", "dropsShowTag")
-        addToggle(exfil, "Drop Tier", "Tier type + level", "dropsShowTier")
-        addToggle(exfil, "Color By Tier", "ESP color from itemData tier", "dropsColorByTier")
-        addToggle(exfil, "Drop Marker", nil, "dropsMarker")
-        addSlider(exfil, "Drop Range", nil, "dropsMaxDist", 50, 3000)
-        addSlider(exfil, "Min Drop Value", "Hide below trader sell $", "dropsMinValue", 0, 50000)
-        addSlider(exfil, "Min Tier", "Hide below tierLevel", "dropsMinTier", 0, 5)
-
-        local filters = tab:PageSection({ Title = "Drop Filters" }):Form()
-        addToggle(filters, "Show Quest", nil, "dropsFilterQuest")
-        addToggle(filters, "Show Ammo", "ammo + mags", "dropsFilterAmmo")
-        addToggle(filters, "Show Meds", nil, "dropsFilterMed")
-        addToggle(filters, "Show Armor", "armor/helmet/bag", "dropsFilterArmor")
-        addToggle(filters, "Show Other", "junk / valuables / rest", "dropsFilterOther")
-
-        local quest = tab:PageSection({ Title = "Quest Objectives" }):Form()
-        addToggle(quest, "Quest Markers", nil, "questMarkerEnabled")
-        addSlider(quest, "Quest Range", nil, "questMaxDist", 100, 8000)
-    end
-
-    -- Tab: Mods
-    do
-        local tab = section:Tab({
-            Title = "Mods",
-            Icon = sym("wrenchAdjustable") or sym("hammerFill") or sym("gearshape"),
-        })
-
-        local gun = tab:PageSection({ Title = "Weapon Mods" }):Form()
-        addToggle(gun, "No Recoil", "Client camera punch", "noRecoil", function()
-            applyWeaponMods()
-        end)
-        addToggle(gun, "No Spread (soft)", "Crosshair + RateHeat", "noSpread", function()
-            applyWeaponMods()
-        end)
-        addToggle(gun, "True No Spread", "Zero cone + camera fire dir", "trueNoSpread", function()
-            applyWeaponMods()
-        end)
-        addToggle(gun, "Fast Bullet / Hitscan", "weapon.vel boost", "fastVel", function()
-            applyWeaponMods()
-        end)
-        addToggle(gun, "Instant ADS", "Snap aimAlpha + ads tween", "instantAds", function()
-            applyWeaponMods()
-        end)
-        addToggle(gun, "Fix Sway Weights", "Repair aimWeight=0 desync", "noSway", function()
-            applyWeaponMods()
-        end)
-
-        local tod = tab:PageSection({ Title = "Day / Night" }):Form()
-        addDropdown(tod, "Time Mode", "Auto / Day / Night / Custom", TIME_MODES, CFG.timeMode or 1, function(i)
-            CFG.timeMode = i
-            applyTimeOfDay()
-        end)
-        addSlider(tod, "Custom Clock", "Hour 0-24 when Custom", "customClockTime", 0, 24, function()
-            if CFG.timeMode == 4 then applyTimeOfDay() end
-        end)
-        addSlider(tod, "Brightness Boost", "Extra night visibility", "brightnessBoost", 0, 100, function()
-            if CFG.timeMode and CFG.timeMode > 1 then applyTimeOfDay() end
-        end)
-    end
-
-    -- Tab: Player
-    do
-        local tab = section:Tab({
-            Title = "Player",
-            Icon = sym("personFill") or sym("figureWalk"),
-        })
-
-        local move = tab:PageSection({ Title = "Movement" }):Form()
-        addToggle(move, "Overweight Sprint", "Sprint while overweight", "owSprint", function(v)
-            if v then task.spawn(installSkillHooks) end
-        end)
-        addToggle(move, "No Weight Slowdown", nil, "noWeightSpeed", function(v)
-            if v then task.spawn(installSkillHooks) end
-        end)
-        addToggle(move, "Infinite Stamina", nil, "infStamina", function(v)
-            if v then task.spawn(installSkillHooks) end
-        end)
-
-        local surv = tab:PageSection({ Title = "Survival" }):Form()
-        addToggle(surv, "No Fall Damage", nil, "noFall")
-        addToggle(surv, "No Drown", nil, "noDrown")
-        addToggle(surv, "Auto Self-Revive", "RV11 on knock", "autoSelfRevive")
-
-        local combat = tab:PageSection({ Title = "Combat Actions" }):Form()
-        addToggle(combat, "Instant Finisher", "finish_special ≤12 studs", "autoFinisher")
-
-        local interact = tab:PageSection({ Title = "Interact" }):Form()
-        addToggle(interact, "Auto Lockpick", "Hold F on lock", "autoLockpick", function(v)
-            if v then task.spawn(installNetHooks) end
-        end)
-
-        local gear = tab:PageSection({ Title = "Gear" }):Form()
-        addButton(gear, "Toggle Headlamp", "Requires headlamp", function()
-            fireGearToggle("lampToggle")
-        end)
-        addButton(gear, "Toggle Visor", "Requires helmet visor", function()
-            fireGearToggle("visorToggle")
-        end)
-    end
-
-    -- Tab: HUD
-    do
-        local tab = section:Tab({
-            Title = "HUD",
-            Icon = sym("squareStack3dUp") or sym("rectangleStack"),
-        })
-        local form = tab:PageSection({ Title = "Overlay" }):Form()
-        addToggle(form, "Raid HUD", nil, "hudEnabled")
-        addToggle(form, "Raid Timer", nil, "hudRaidTimer")
-        addToggle(form, "Combat Timer", nil, "hudCombat")
-        addToggle(form, "Loot Secured", nil, "hudLootSecured")
-        addToggle(form, "Open Exfil Count", nil, "hudExfilCount")
-        addToggle(form, "Ammo / Mag HUD", nil, "hudAmmo")
-        addToggle(form, "Crosshair", nil, "crosshair")
-    end
-
-    -- Tab: Menu Keybind
-    do
-        local tab = section:Tab({
-            Title = "Menu",
-            Icon = sym("gearshape") or sym("sidebarLeft"),
-        })
-        local form = tab:PageSection({ Title = "Window" }):Form()
-        local row = form:Row({ SearchIndex = "Toggle Key" })
-        row:Left():TitleStack({
-            Title = "Toggle Key",
-            Subtitle = "Minimize / restore menu",
-        })
-        row:Right():KeybindField({
-            Value = Enum.KeyCode.G,
-            Placeholder = "Press key…",
-            BindPressed = function(_, _, inputComplete, gameProcessed)
-                if not inputComplete or gameProcessed then
-                    return
-                end
-                pcall(function()
-                    window.Minimized = not window.Minimized
-                end)
-            end,
-        })
-    end
-
-    print("[HAVOC] Cascade OK:", CASCADE_VERSION)
-    pushNotify("HAVOC", "Internal ready — press G for menu", 5)
-    if configLoaded then
-        pushNotify("Settings", "Loaded from save", 3)
-    end
+    print("[HAVOC] VoidUI menu ready | Key G toggle")
 end

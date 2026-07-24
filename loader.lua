@@ -50,7 +50,7 @@ local havoc = {
 }
 
 -- Loader helper that supports local testing (development) vs. GitHub loading (production)
-local GITHUB_USER = "voidw0rld"
+local GITHUB_USER = "monthonsova"
 local GITHUB_REPO = "havoc"
 local GITHUB_BRANCH = "main"
 

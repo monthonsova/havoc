@@ -532,8 +532,14 @@ return function(havoc)
                         if loot.root and loot.root.Parent then
                             loot.pos = loot.root.Position
                         end
-                        local is_open = loot.is_open_inst and loot.is_open_inst.Value or loot.is_open
-                        local is_locked = loot.is_locked_inst and loot.is_locked_inst.Value or loot.is_locked
+                        local is_open = loot.is_open
+                        if loot.is_open_inst and loot.is_open_inst.Parent then
+                            pcall(function() is_open = loot.is_open_inst.Value end)
+                        end
+                        local is_locked = loot.is_locked
+                        if loot.is_locked_inst and loot.is_locked_inst.Parent then
+                            pcall(function() is_locked = loot.is_locked_inst.Value end)
+                        end
                         if havoc.lootPassesFilter(CFG.lootFilter, is_open, is_locked) then
                             local dist = (loot.pos - cpos).Magnitude
                             if dist <= CFG.lootMaxDist then

@@ -154,7 +154,7 @@ return function(havoc)
         local parts, sizes = {}, {}
         for j = 1, #havoc.BONE_NAMES do
             local name = havoc.BONE_NAMES[j]
-            local p = model:FindFirstChild(name, true)
+            local p = model:FindFirstChild(name)
             if p and p:IsA("BasePart") then
                 parts[name] = p
                 sizes[name] = p.Size
@@ -196,7 +196,9 @@ return function(havoc)
         visIgnoreStamp = now
         local list = {}
         local function add(inst)
-            if inst then list[#list + 1] = inst end
+            if inst and typeof(inst) == "Instance" and inst.Parent then
+                list[#list + 1] = inst
+            end
         end
         add(LP.Character)
         add(havoc.resolveCharactersFolder())
@@ -320,7 +322,7 @@ return function(havoc)
     end
 
     havoc.processEntityScanChild = function(child, depth)
-        if depth > 6 then return end
+        if not child or depth > 6 then return end
         if child:IsA("Model") or child:IsA("WorldModel") then
             if child:FindFirstChildOfClass("Humanoid") then
                 havoc.addEntityModel(child)

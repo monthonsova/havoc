@@ -153,10 +153,12 @@ return function(havoc)
             origFire = net.FireServer
             net.FireServer = function(self, evName, a, b, c, ...)
                 if havoc.scriptAlive and evName == "fire" then
-                    local origin, dir = b, c
-                    local nOrigin, nDir = havoc.applySilentFire(origin, dir)
-                    if nOrigin ~= nil or nDir ~= nil then
-                        return origFire(self, evName, a, nOrigin or origin, nDir or dir, ...)
+                    if type(havoc.applySilentFire) == "function" then
+                        local origin, dir = b, c
+                        local nOrigin, nDir = havoc.applySilentFire(origin, dir)
+                        if nOrigin ~= nil or nDir ~= nil then
+                            return origFire(self, evName, a, nOrigin or origin, nDir or dir, ...)
+                        end
                     end
                     return origFire(self, evName, a, b, c, ...)
                 end
