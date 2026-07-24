@@ -118,6 +118,9 @@ return function(havoc)
         trueNoSpread = false,
         noSway = false,
         fastVel = false,
+        magicBullet = false,
+        zeroGravity = false,
+        bulletSpeedBoost = 100000,
         instantAds = false,
         noAimSway = false,
 

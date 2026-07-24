@@ -29,32 +29,41 @@ This document serves as a reminder and guide for the AI agent (Antigravity) to o
 
 ---
 
-## 4. Potassium Executor Capabilities & API Reference
+## 4. Potassium Complete API Reference (196 Functions across 20 Libraries)
 
-Potassium is an advanced Roblox executor environment providing comprehensive C-closure hooking, memory reflection, environment manipulation, and off-thread execution capabilities.
+### A. Off-Thread & Closure Hooking
+- `hookfunction(oldFn, newFn)` / `restorefunction(fn)`: Hooks/restores Lua or C closures.
+- `oth.hook(target, hook)` / `oth.unhook(target)`: Off-Thread Hooking mechanism using isolated threads to bypass C-stack checks.
+- `oth.get_root_callback()` / `oth.get_original_thread()` / `oth.is_hook_thread()`: Context management for off-thread hooks.
+- `setstackhidden(fn, state)`: Hides execution frames from call-stack inspection.
+- `iscclosure(fn)` / `islclosure(fn)` / `isnewcclosure(fn)` / `isexecutorclosure(fn)` / `isfunctionhooked(fn)`: Closure type identification.
 
-### Key Libraries & APIs:
-* **Closure & Function Hooking**:
-  - `hookfunction(oldFn, newFn)`: Hooks a Lua or C closure and returns the original function.
-  - `restorefunction(fn)`: Restores a hooked function back to its original implementation.
-  - `oth.hook(targetFn, hookFn)`: Off-Thread Hooking mechanism allowing secure C-function hooking on isolated threads to bypass detection.
-  - `oth.get_root_callback()` / `oth.unhook()`: Tools for managing off-thread hooks.
-  - `isfunctionhooked(fn)` / `iscclosure(fn)` / `islclosure(fn)` / `isexecutorclosure(fn)`: Type and status checking for functions.
-  - `setstackhidden(fn, state)`: Hides execution frames from call-stack inspection anti-cheats.
-* **Metatable & Environment Manipulation**:
-  - `hookmetamethod(object, method, newFn)`: Direct hooking of metatable methods (e.g., `__namecall`, `__index`, `__newindex`).
-  - `getnamecallmethod()` / `setnamecallmethod(method)`: Access and override active `__namecall` method names.
-  - `getsenv(script)` / `getgenv()` / `getrenv()`: Script, executor, and Roblox engine environment inspection.
-  - `setreadonly(table, bool)` / `isreadonly(table)`: Toggle metatable write protections.
-* **Reflection & Memory Inspection**:
-  - `getgc(includeTables)` / `filtergc(...)`: Garbage collection scanning to locate hidden instances, functions, and active tables.
-  - `getloadedmodules()` / `getrunningscripts()`: Retrieve module and script arrays.
-  - `gethiddenproperty(inst, prop)` / `sethiddenproperty(inst, prop, val)`: Access non-scriptable internal properties.
-  - `getbspval(inst)`: Read binary string properties (e.g., Terrain physics, Mesh data).
-* **Signal & RakNet Networking**:
-  - `raknet.add_send_hook(callback)`: Hook low-level RakNet network packets before transmission.
-  - `raknet.send(payload, ...)`: Direct low-level packet dispatching.
-  - `getconnections(signal)` / `firesignal(signal)` / `replicatesignal(signal)`: Inspect and invoke RBXScriptSignal connections.
-* **Input & Render**:
-  - `mousemoverel(dx, dy)` / `mousemoveabs(x, y)` / `mouse1click()` / `keypress(code)`: User input injection.
-  - `Drawing.new(type)` / `DrawingImmediate`: Vector overlay rendering.
+### B. Metatable & Environment Control
+- `hookmetamethod(obj, method, newFn)`: Direct metatable method overriding (`__namecall`, `__index`, `__newindex`).
+- `getnamecallmethod()` / `setnamecallmethod(method)`: Access and modify global `__namecall` method names.
+- `getrawmetatable(tbl)` / `setrawmetatable(tbl, meta)` / `getgenv()` / `getrenv()` / `getsenv(script)` / `gettenv(thread)`: Environment and metatable inspection ignoring protections.
+- `setreadonly(tbl, bool)` / `isreadonly(tbl)` / `makereadonly(tbl)` / `makewritable(tbl)`: Metatable write access control.
+
+### C. Garbage Collection & Memory Reflection
+- `getgc(includeTables)` / `filtergc(...)`: Garbage collection scanner for active tables/functions.
+- `getreg()` / `debug.getregistry()`: Internal Lua registry table access.
+- `gethiddenproperties` / `gethiddenproperty` / `sethiddenproperty`: Access non-scriptable internal properties.
+- `getbspval(inst)`: Read binary string properties (`Terrain.SmoothGrid`, `PhysicsData`).
+
+### D. Networking & Signals
+- `raknet.add_send_hook(cb)` / `raknet.remove_send_hook(cb)` / `raknet.send(payload, ...)`: Low-level RakNet packet interception and injection.
+- `firesignal(signal)` / `replicatesignal(signal)` / `cansignalreplicate(signal)`: Signal invocation and replication.
+- `getconnections(signal)` / `getconnection(signal)`: Inspect script signal connections.
+
+### E. Actor & Multi-Threading
+- `create_comm_channel()` / `get_comm_channel()`: Inter-actor communication channels.
+- `getactors()` / `getactorthreads()` / `getdeletedactors()`: Actor hierarchy tracking.
+- `run_on_actor(actor, code)` / `run_on_thread(thread, code)`: Parallel script execution.
+
+### F. Cryptography & FileSystem
+- `crypt.encrypt` / `crypt.decrypt` / `crypt.hash` / `crypt.hmac` / `crypt.lz4compress` / `crypt.lz4decompress`: Encryption and compression utilities.
+- `readfile` / `writefile` / `appendfile` / `loadfile` / `dofile` / `listfiles` / `makefolder` / `delfile`: Workspace file operations.
+
+### G. Input & Graphics
+- `mousemoverel` / `mousemoveabs` / `mouse1click` / `mouse2click` / `keypress` / `keyrelease`: Direct OS/Roblox input injection.
+- `Drawing.new` / `DrawingImmediate.GetPaint` / `Shader`: 2D vector drawing and HLSL shader rendering.

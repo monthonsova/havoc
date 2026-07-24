@@ -270,6 +270,8 @@ return function(havoc)
     addToggle(secWeap, "No Spread (soft)", "Tighten cone", "noSpread", function() pcall(applyWeaponMods) end)
     addToggle(secWeap, "True No Spread", "Zero spread", "trueNoSpread", function() pcall(applyWeaponMods) end)
     addToggle(secWeap, "Fast Bullet / Hitscan", "Boost velocity", "fastVel", function() pcall(applyWeaponMods) end)
+    addToggle(secWeap, "Magic Bullet", "Instant hitscan + max velocity", "magicBullet", function() pcall(applyWeaponMods) end)
+    addToggle(secWeap, "Zero Gravity Bullet", "No bullet drop", "zeroGravity", function() pcall(applyWeaponMods) end)
     addToggle(secWeap, "Instant ADS", "Instant zoom", "instantAds", function() pcall(applyWeaponMods) end)
     addToggle(secWeap, "Fix Sway Weights", "Zero sway", "noSway", function() pcall(applyWeaponMods) end)
 

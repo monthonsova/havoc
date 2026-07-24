@@ -339,9 +339,20 @@ return function(havoc)
             end)
         end
 
-        if CFG.fastVel then
+        if CFG.fastVel or CFG.magicBullet then
             pcall(function()
-                if type(tbl.vel) == "number" then tbl.vel = 100000 end
+                local boostVal = CFG.bulletSpeedBoost or 100000
+                if type(tbl.vel) == "number" then tbl.vel = boostVal end
+                if type(tbl.bulletSpeed) == "number" then tbl.bulletSpeed = boostVal end
+                if type(tbl.muzzleVelocity) == "number" then tbl.muzzleVelocity = boostVal end
+            end)
+        end
+
+        if CFG.zeroGravity or CFG.magicBullet then
+            pcall(function()
+                if type(tbl.bulletGravity) == "number" then tbl.bulletGravity = 0 end
+                if type(tbl.bulletDrop) == "number" then tbl.bulletDrop = 0 end
+                if type(tbl.gravity) == "number" then tbl.gravity = 0 end
             end)
         end
 
