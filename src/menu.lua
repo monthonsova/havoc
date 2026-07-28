@@ -99,6 +99,18 @@ return function(havoc)
     havoc.CascadeWindow = Window
     havoc.VoidUIWindow = Window
 
+    pcall(function()
+        if Window.SelectTab then
+            Window:SelectTab(1)
+        end
+    end)
+
+    pcall(function()
+        if VoidUI and VoidUI.Notify then
+            VoidUI:Notify({ Title = "HAVOC", Content = "Press 'G' to toggle menu view!", Duration = 5 })
+        end
+    end)
+
     local toggleRefs = {}
     local sliderRefs = {}
     local dropdownRefs = {}
