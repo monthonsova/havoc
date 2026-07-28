@@ -119,9 +119,11 @@ loadModule("src/mods")
 loadModule("src/esp")
 loadModule("src/menu")
 
+local CFG = havoc.CFG or {}
+
 -- ── Input and Keybind Connections ─────────────────────────────────────
 local inputConn = SVC.UIS.InputBegan:Connect(function(io, gpe)
-    local CFG = havoc.CFG or {}
+    local CFG = havoc.CFG or CFG
     local changed = false
     if io.KeyCode == Enum.KeyCode.KeypadOne then CFG.playerAimEnabled = not CFG.playerAimEnabled; changed = true
     elseif io.KeyCode == Enum.KeyCode.KeypadTwo then CFG.npcAimEnabled = not CFG.npcAimEnabled; changed = true
@@ -191,8 +193,8 @@ task.spawn(function()
         acc = acc + dt
         if acc >= 0.16 then
             acc = 0
-            local CFG = havoc.CFG or {}
-            if CFG.autoLockpick and type(havoc.hasLockpickTool) == "function" and havoc.hasLockpickTool() and shared then
+            local cfg = havoc.CFG
+            if cfg and cfg.autoLockpick and type(havoc.hasLockpickTool) == "function" and havoc.hasLockpickTool() and shared then
                 shared.lockpick = true
             end
             if shared and shared.lockpicking and type(havoc.tryCompleteLockpick) == "function" then
@@ -204,10 +206,10 @@ task.spawn(function()
             if type(havoc.installSkillHooks) == "function" then
                 pcall(havoc.installSkillHooks)
             end
-            if CFG.autoSelfRevive and type(havoc.tryAutoSelfRevive) == "function" then
+            if cfg and cfg.autoSelfRevive and type(havoc.tryAutoSelfRevive) == "function" then
                 pcall(havoc.tryAutoSelfRevive)
             end
-            if CFG.autoFinisher and type(havoc.tryInstantFinisher) == "function" then
+            if cfg and cfg.autoFinisher and type(havoc.tryInstantFinisher) == "function" then
                 local cachePlr = (havoc.CACHE and havoc.CACHE.player) or {}
                 local cacheEnt = (havoc.CACHE and havoc.CACHE.entity) or {}
                 pcall(havoc.tryInstantFinisher, cachePlr)
