@@ -38,13 +38,16 @@ if not game:IsLoaded() then game.Loaded:Wait() end
 local LP = SVC.Players.LocalPlayer
 if not LP then LP = SVC.Players.PlayerAdded:Wait() end
 
--- Shared context table
+-- Shared context table initialized with default sub-tables to prevent nil index errors
 local havoc = {
     scriptAlive = true,
     SVC = SVC,
     LP = LP,
+    CFG = {},
+    CACHE = { player = {}, entity = {}, loot = {}, exfil = {}, drops = {} },
+    DrawPool = {},
     conns = {},
-    BRAND = "voidw0rld",
+    BRAND = "monthonsova",
     BRAND_ICON = "rbxassetid://111627748770819",
     BRAND_DISCORD = "discord.gg/voidw0rld",
 }
@@ -108,7 +111,7 @@ local function loadModule(name)
     return ret
 end
 
--- Import all modules
+-- Import all modules safely
 loadModule("src/config")
 loadModule("src/utils")
 loadModule("src/aimbot")
@@ -116,10 +119,9 @@ loadModule("src/mods")
 loadModule("src/esp")
 loadModule("src/menu")
 
-local CFG = havoc.CFG
-
 -- ── Input and Keybind Connections ─────────────────────────────────────
 local inputConn = SVC.UIS.InputBegan:Connect(function(io, gpe)
+    local CFG = havoc.CFG or {}
     local changed = false
     if io.KeyCode == Enum.KeyCode.KeypadOne then CFG.playerAimEnabled = not CFG.playerAimEnabled; changed = true
     elseif io.KeyCode == Enum.KeyCode.KeypadTwo then CFG.npcAimEnabled = not CFG.npcAimEnabled; changed = true
@@ -127,7 +129,7 @@ local inputConn = SVC.UIS.InputBegan:Connect(function(io, gpe)
     elseif io.KeyCode == Enum.KeyCode.KeypadFour then CFG.exfilEnabled = not CFG.exfilEnabled; changed = true
     end
     if changed then
-        havoc.SaveConfig()
+        if type(havoc.SaveConfig) == "function" then pcall(havoc.SaveConfig) end
         if type(havoc.cascadeUiSync) == "function" then
             pcall(havoc.cascadeUiSync)
         end
@@ -139,10 +141,10 @@ table.insert(havoc.conns, inputConn)
 -- ── Engine Loops and Task Spawns ──────────────────────────────────────
 task.spawn(function()
     task.wait(1)
-    pcall(havoc.refreshLootCache)
+    if type(havoc.refreshLootCache) == "function" then pcall(havoc.refreshLootCache) end
     while havoc.scriptAlive do
         task.wait(15)
-        pcall(havoc.refreshLootCache)
+        if type(havoc.refreshLootCache) == "function" then pcall(havoc.refreshLootCache) end
     end
 end)
 
@@ -189,6 +191,7 @@ task.spawn(function()
         acc = acc + dt
         if acc >= 0.16 then
             acc = 0
+            local CFG = havoc.CFG or {}
             if CFG.autoLockpick and type(havoc.hasLockpickTool) == "function" and havoc.hasLockpickTool() and shared then
                 shared.lockpick = true
             end
@@ -205,8 +208,10 @@ task.spawn(function()
                 pcall(havoc.tryAutoSelfRevive)
             end
             if CFG.autoFinisher and type(havoc.tryInstantFinisher) == "function" then
-                pcall(havoc.tryInstantFinisher, havoc.CACHE.player)
-                pcall(havoc.tryInstantFinisher, havoc.CACHE.entity)
+                local cachePlr = (havoc.CACHE and havoc.CACHE.player) or {}
+                local cacheEnt = (havoc.CACHE and havoc.CACHE.entity) or {}
+                pcall(havoc.tryInstantFinisher, cachePlr)
+                pcall(havoc.tryInstantFinisher, cacheEnt)
             end
         end
     end
@@ -250,19 +255,27 @@ if getgenv then
     getgenv().HAVOC_INTERNAL = getgenv().HAVOC_INTERNAL or {}
     getgenv().HAVOC_INTERNAL.cleanup = function()
         havoc.scriptAlive = false
-        pcall(havoc.restoreSkillHooks)
-        pcall(havoc.restoreNetHooks)
-        for i = 1, #havoc.conns do
-            pcall(function() havoc.conns[i]:Disconnect() end)
+        if type(havoc.restoreSkillHooks) == "function" then pcall(havoc.restoreSkillHooks) end
+        if type(havoc.restoreNetHooks) == "function" then pcall(havoc.restoreNetHooks) end
+        if type(havoc.conns) == "table" then
+            for i = 1, #havoc.conns do
+                pcall(function() havoc.conns[i]:Disconnect() end)
+            end
         end
         pcall(function() SVC.RunService:UnbindFromRenderStep("HAVOC_AIM") end)
         pcall(function() SVC.RunService:UnbindFromRenderStep("HAVOC_TIME") end)
-        for _, pool in pairs(havoc.DrawPool) do
-            for _, d in pairs(pool) do pcall(function() d:Remove() end) end
+        if type(havoc.DrawPool) == "table" then
+            for _, pool in pairs(havoc.DrawPool) do
+                if type(pool) == "table" then
+                    for _, d in pairs(pool) do pcall(function() d:Remove() end) end
+                end
+            end
         end
         task.defer(function()
             pcall(function()
-                if havoc.CascadeGui and havoc.CascadeGui.Destroy then
+                if havoc.VoidUIWindow and havoc.VoidUIWindow.Destroy then
+                    havoc.VoidUIWindow:Destroy()
+                elseif havoc.CascadeGui and havoc.CascadeGui.Destroy then
                     havoc.CascadeGui:Destroy()
                 elseif havoc.CascadeWindow and havoc.CascadeWindow.Destroy then
                     havoc.CascadeWindow:Destroy()
