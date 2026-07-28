@@ -82,24 +82,35 @@ return function(havoc)
         return
     end
 
-    local Window = VoidUI:CreateWindow({
-        Title = BRAND,
-        Author = "HAVOC Internal · " .. BRAND_DISCORD,
-        Icon = BRAND_ICON,
-        Accent = Color3.fromRGB(162, 89, 255),
-        Size = UDim2.fromOffset(720, 560),
-        Transparency = 0.14,
-        Bloom = true,
-        Search = true,
-        OpenButton = true,
-        ToggleKey = Enum.KeyCode.G,
-        CornerRadius = 26,
-    })
+    local Window
+    local okWin, errWin = pcall(function()
+        Window = VoidUI:CreateWindow({
+            Title = BRAND,
+            Author = "HAVOC Internal · " .. BRAND_DISCORD,
+            Icon = BRAND_ICON,
+            Accent = Color3.fromRGB(162, 89, 255),
+            Size = UDim2.fromOffset(720, 560),
+            Transparency = 0.14,
+            Bloom = true,
+            Search = true,
+            OpenButton = true,
+            ToggleKey = Enum.KeyCode.G,
+            CornerRadius = 26,
+        })
+    end)
+
+    if not okWin or not Window then
+        warn("[HAVOC] VoidUI CreateWindow error:", tostring(errWin))
+        return
+    end
 
     havoc.CascadeWindow = Window
     havoc.VoidUIWindow = Window
 
     pcall(function()
+        if Window.Toggle then
+            Window:Toggle(true)
+        end
         if Window.SelectTab then
             Window:SelectTab(1)
         end
